@@ -14,7 +14,7 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
     
     // Extract the path component from the incoming HTTP request's URI
     let path = req.uri().path();
-
+    let query_params = req.uri().query().unwrap_or("");
     // Iterate over all HTTP servers defined in the configuration
     for server in &config.http.servers {
 
@@ -27,8 +27,8 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
                 // Log the matched path
                 println!("Proxy Path: {}", path);
 
-                //Handle error in requets
-                let uri = format!("{}{}", &proxy.proxy_pass, &path);
+                // add uri with query params
+                let uri = format!("{}{}?{}", &proxy.proxy_pass, &path, &query_params);
                 let request_result = Request::builder()
                     .method(req.method())
                     .uri(&uri)
@@ -81,7 +81,6 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
     // handle the request using the default handler
     handle(req).await
 }
-
 
 // handler req that returns "not mapped" response
 pub async fn handle(_req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
