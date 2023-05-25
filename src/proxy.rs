@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::{sync::Arc};
+use std::str::FromStr;
 
 use hyper::{Body, Request, Response, Client, HeaderMap, http::{HeaderValue, HeaderName}, StatusCode};
 use hyper_tls::HttpsConnector;
@@ -11,7 +12,7 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
     // Create a new HTTP client to send requests
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
-    
+
     // Extract the path component from the incoming HTTP request's URI
     let path = req.uri().path();
     let query_params = req.uri().query().unwrap_or("");
@@ -27,6 +28,7 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
                 // Log the matched path
                 println!("Proxy Path: {}", path);
 
+                let original_headers = req.headers().clone();
                 // add uri with query params
                 let uri = format!("{}{}?{}", &proxy.proxy_pass, &path, &query_params);
                 let request_result = Request::builder()
@@ -48,6 +50,17 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
                 // Get a mutable reference to the request's headers
                 let headers: &mut HeaderMap<HeaderValue> = request.headers_mut();
 
+                // Copy all the headers from the original request
+                for (name, value) in original_headers {
+                    // Convert the key to a HeaderName and the value to a HeaderValue
+                    if let Some(header_name) = name {
+                        if header_name == "host" {
+                            continue;
+                        }
+                        headers.insert(header_name, value);
+                    }
+                }
+
                 // Check if the proxy has custom request headers defined
                 if let Some(request_headers) = &proxy.request_headers {
 
@@ -62,7 +75,7 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
 
                                 // Convert the key to a HeaderName and the value to a HeaderValue
                                 let header_name = HeaderName::from_bytes(key.as_bytes()).unwrap();
-                                let header_value = HeaderValue::from_str(value).unwrap();
+                                let header_value: HeaderValue = HeaderValue::from_str(value).unwrap();
 
                                 // Add the custom header to the request
                                 headers.insert(header_name, header_value);

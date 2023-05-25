@@ -28,6 +28,9 @@ async fn main() {
         }
     }
 
+    // clone port value from config
+    let config_port = config.http.servers[0].listen.clone();
+
     let make_svc = make_service_fn(move |_| {
         let config = Arc::new(config.clone());
         async move {
@@ -35,7 +38,10 @@ async fn main() {
         }
     });
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3400));
+    // get port from env to int or get from env
+    let port = config_port.parse::<u16>().unwrap_or_else(|_| env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse::<u16>().expect("PORT must be a number"));
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let server = Server::bind(&addr).serve(make_svc);
 
     if let Err(e) = server.await {
