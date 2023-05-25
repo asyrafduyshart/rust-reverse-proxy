@@ -1,5 +1,5 @@
 use std::{sync::Arc};
-use std::str::FromStr;
+
 
 use hyper::{Body, Request, Response, Client, HeaderMap, http::{HeaderValue, HeaderName}, StatusCode};
 use hyper_tls::HttpsConnector;
@@ -25,12 +25,20 @@ pub async fn mirror(req: Request<Body>, config: Arc<Configuration>) -> Result<Re
             // Check if the request URI's path starts with the current proxy's path
             if path.starts_with(&proxy.proxy_path) {
 
-                // Log the matched path
-                println!("Proxy Path: {}", path);
+                // Log the proxy
+                let full_url = &proxy.proxy_pass.clone();
 
                 let original_headers = req.headers().clone();
                 // add uri with query params
-                let uri = format!("{}{}?{}", &proxy.proxy_pass, &path, &query_params);
+                let uri = match (proxy.retain_path, query_params.is_empty()) {
+                    (true, true) => format!("{}", full_url),
+                    (true, false) => format!("{}?{}", full_url, &query_params),
+                    (false, true) => format!("{}{}", full_url, &path),
+                    (false, false) => format!("{}{}?{}", full_url, &path, &query_params),
+                };
+                
+                println!("uri: {}", uri);
+
                 let request_result = Request::builder()
                     .method(req.method())
                     .uri(&uri)
