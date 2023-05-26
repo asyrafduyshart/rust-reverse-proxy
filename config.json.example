@@ -1,0 +1,20 @@
+{
+	"log_level": "error",
+	"http": {
+		"servers": [{
+			"root": "static",
+			"name": "site2",
+			"proxies": [{
+				"proxy_pass": "https://apichallenges.herokuapp.com/mirror/request",
+				"proxy_path": "/mirror",
+				"retain_path": true,
+                "request_headers": [{
+					"Some-Header": "Oke"
+				}]
+			}
+		],
+			"listen": "3400"
+		}]
+	},
+	"access_log": "verbose"
+}

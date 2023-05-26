@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RequestHeader {
-    #[serde(default)]
+    #[serde(flatten)]
     pub headers: Option<HashMap<String, String>>,
 }
 
@@ -32,10 +32,14 @@ pub struct Http {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {
+    // optional fields
+    #[serde(default)]
     pub log_level: String,
+    #[serde(default)]
     pub ip_check_interval: String,
+    #[serde(default)]
     pub ip_whitelist_url: String,
+    #[serde(default)]
     pub default_ip_whitelist: String,
     pub http: Http,
-    pub access_log: String,
 }

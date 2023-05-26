@@ -2,6 +2,7 @@ use std::{sync::Arc};
 use hyper::{Body, Request, Response, Client, HeaderMap, http::{HeaderValue, HeaderName}, StatusCode, client::HttpConnector};
 use hyper_tls::HttpsConnector;
 use tokio::fs::read;
+use mime_guess::from_path;
 
 use crate::config::{Configuration, Proxy};
 
@@ -81,9 +82,13 @@ async fn proxy_request(req: Request<Body>, client: Client<HttpsConnector<HttpCon
         }
     }
 
+    // print all proxy
+    println!("proxy: {:?}", proxy);
+
     // Check if the proxy has custom request headers defined
     if let Some(request_headers) = &proxy.request_headers {
-
+        println!("Adding custom request headers");
+        println!("{:?}", request_headers);
         // Iterate over each custom request header
         for request_header in request_headers {
 
@@ -92,7 +97,7 @@ async fn proxy_request(req: Request<Body>, client: Client<HttpsConnector<HttpCon
 
                 // Iterate over each key-value pair in the header
                 for (key, value) in s_headers {
-
+                    println!("{}: {}", key, value);
                     // Convert the key to a HeaderName and the value to a HeaderValue
                     let header_name = HeaderName::from_bytes(key.as_bytes()).unwrap();
                     let header_value: HeaderValue = HeaderValue::from_str(value).unwrap();
@@ -110,7 +115,7 @@ async fn proxy_request(req: Request<Body>, client: Client<HttpsConnector<HttpCon
 
 
 // List of web file extensions
-const WEB_EXTENSIONS: [&str; 9] = [
+const WEB_EXTENSIONS: [&str; 10] = [
     ".html", 
     ".js", 
     ".css", 
@@ -119,7 +124,8 @@ const WEB_EXTENSIONS: [&str; 9] = [
     ".jpeg", 
     ".gif", 
     ".svg", 
-    ".ico"
+    ".ico",
+    ".json"
 ];
 
 // Asynchronous function named 'serve_static_files'. It acts as a router for HTTP requests based on path
@@ -129,15 +135,19 @@ async fn serve_static_files(path: &str, folder_path: &String) -> Result<Response
     let file_path = if has_web_extension {
         format!("{}{}", folder_path, path)
     } else {
-        //format with added folder path
+        // format with added folder path
         format!("{}/index.html", folder_path)
-        // "static/index.html".to_string()
     };
 
     match read(&file_path).await {
         Ok(bytes) => {
-            let body = Body::from(bytes);
-            Ok(Response::new(body))
+            let mime_type = from_path(&file_path).first_or_octet_stream();
+            let mut response = Response::new(Body::from(bytes));
+            response.headers_mut().insert(
+                hyper::header::CONTENT_TYPE,
+                HeaderValue::from_str(mime_type.as_ref()).unwrap(),
+            );
+            Ok(response)
         },
         Err(e) => {
             if has_web_extension {
@@ -153,19 +163,20 @@ async fn serve_static_files(path: &str, folder_path: &String) -> Result<Response
             // In case of an error or non-web extension path, fallback to index.html
             // format the path with folder path
             let back_path = format!("{}/index.html", folder_path);
-            let bytes = read(back_path).await.unwrap_or_else(|e| {
+            let bytes = read(&back_path).await.unwrap_or_else(|e| {
                 eprintln!("Failed to read fallback file {}/index.html: {}", folder_path, e);
                 Vec::new()  // Empty Vec
             });
-            let body = Body::from(bytes);
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(body)
-                .unwrap())
+            let mime_type = from_path(&back_path).first_or_octet_stream();
+            let mut response = Response::new(Body::from(bytes));
+            response.headers_mut().insert(
+                hyper::header::CONTENT_TYPE,
+                HeaderValue::from_str(mime_type.as_ref()).unwrap(),
+            );
+            Ok(response)
         }
     }
 }
-
 
 // handler req that returns "not mapped" response
 pub async fn handle(_req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
