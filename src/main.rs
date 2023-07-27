@@ -91,52 +91,62 @@ async fn main() {
 		server_tasks.push(server_task);
 	}
 
-	let whitelist_updater_task = task::spawn(async move {
-		// Create an interval timer that ticks every 30 seconds
-		let mut interval = interval(Duration::from_secs(30));
+	// if whitelist url is not empty
+	if !config.ip_whitelist_url.is_empty() {
+		let parsed_timeout = config.ip_check_interval.parse::<u64>();
+		let timeout = match parsed_timeout {
+			Ok(val) => val,
+			Err(_) => {
+				eprintln!("Failed to parse ip_check_interval, using default value of 30");
+				30
+			}
+		};
+		let whitelist_updater_task = task::spawn(async move {
+			// Create an interval timer that ticks every 30 seconds
+			let mut interval = interval(Duration::from_secs(timeout));
 
-		loop {
-			// Wait for the next tick
-			interval.tick().await;
+			loop {
+				// Wait for the next tick
+				interval.tick().await;
 
-			// Send the GET request
-			let res = client.get(config.ip_whitelist_url.clone()).send().await;
+				// Send the GET request
+				let res = client.get(config.ip_whitelist_url.clone()).send().await;
 
-			match res {
-				Ok(response) => {
-					// If the request was successful, parse the response body as a list of IPs
-					let body = match response.text().await {
-						Ok(body) => body,
-						Err(e) => {
-							eprintln!("Failed to parse response body: {}", e);
-							continue;
+				match res {
+					Ok(response) => {
+						// If the request was successful, parse the response body as a list of IPs
+						let body = match response.text().await {
+							Ok(body) => body,
+							Err(e) => {
+								eprintln!("Failed to parse response body: {}", e);
+								continue;
+							}
+						};
+
+						// Split the body by newline and parse each piece into an IP address
+						let ips: Vec<IpAddr> = body
+							.lines()
+							.map(|line| line.parse::<IpAddr>())
+							.filter_map(Result::ok)
+							.collect();
+
+						println!("updated whitelist: {:?}", ips.len());
+
+						// Lock the whitelist and update it
+						let mut whitelist = whitelisted_ips.lock().unwrap();
+						whitelist.clear();
+						for ip in ips {
+							whitelist.insert(ip);
 						}
-					};
-
-					// Split the body by newline and parse each piece into an IP address
-					let ips: Vec<IpAddr> = body
-						.lines()
-						.map(|line| line.parse::<IpAddr>())
-						.filter_map(Result::ok)
-						.collect();
-
-					println!("updated whitelist: {:?}", ips.len());
-
-					// Lock the whitelist and update it
-					let mut whitelist = whitelisted_ips.lock().unwrap();
-					whitelist.clear();
-					for ip in ips {
-						whitelist.insert(ip);
+					}
+					Err(e) => {
+						eprintln!("Failed to send GET request: {}", e);
 					}
 				}
-				Err(e) => {
-					eprintln!("Failed to send GET request: {}", e);
-				}
 			}
-		}
-	});
-
-	server_tasks.push(whitelist_updater_task);
+		});
+		server_tasks.push(whitelist_updater_task);
+	}
 
 	let servers = futures::future::join_all(server_tasks).await;
 
