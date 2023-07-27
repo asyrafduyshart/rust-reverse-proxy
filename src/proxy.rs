@@ -25,8 +25,15 @@ pub async fn mirror(
 	let https = HttpsConnector::new();
 	let client = Client::builder().build::<_, hyper::Body>(https);
 
-	println!("white list: {:?}", whitelisted_ips.lock().unwrap().len());
-	println!("socket: {:?}", socket);
+	if whitelisted_ips.lock().unwrap().len() > 0 {
+		// If the IP is whitelisted, serve the request
+		if !whitelisted_ips.lock().unwrap().contains(&socket) {
+			return Ok(Response::builder()
+				.status(StatusCode::FORBIDDEN)
+				.body(Body::from("Forbidden"))
+				.unwrap());
+		}
+	}
 
 	// Extract the path component from the incoming HTTP request's URI
 	let path = req.uri().path();
