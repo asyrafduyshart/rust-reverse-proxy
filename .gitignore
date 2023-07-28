@@ -2,3 +2,8 @@
 config.json
 static
 /static/*
+/static/*/*
+.html
+/*.html
+/static/*.html
+```

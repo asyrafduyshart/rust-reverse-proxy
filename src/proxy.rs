@@ -54,6 +54,7 @@ pub async fn mirror(
 				return proxy_request(req, client, proxy).await;
 			}
 		}
+
 		// serve the static files
 		return serve_static_files(path, &server.root).await;
 	}
@@ -73,14 +74,15 @@ async fn proxy_request(
 
 	// add uri with query params
 	let path = req.uri().path();
+	// add final path for replacement
+
+	let final_path = path.replace(&proxy.proxy_path, "");
 	let uri = match (proxy.retain_path, query_params.is_empty()) {
-		(true, true) => format!("{}", full_url),
-		(true, false) => format!("{}?{}", full_url, &query_params),
+		(true, true) => format!("{}{}", full_url, final_path),
+		(true, false) => format!("{}{}?{}", full_url, final_path, &query_params),
 		(false, true) => format!("{}{}", full_url, &path),
 		(false, false) => format!("{}{}?{}", full_url, &path, &query_params),
 	};
-
-	println!("requesting to uri: {}", uri);
 
 	let request_result = Request::builder()
 		.method(req.method())
@@ -114,20 +116,14 @@ async fn proxy_request(
 		}
 	}
 
-	// print all proxy
-	println!("proxy: {:?}", proxy);
-
 	// Check if the proxy has custom request headers defined
 	if let Some(request_headers) = &proxy.request_headers {
-		println!("Adding custom request headers");
-		println!("{:?}", request_headers);
 		// Iterate over each custom request header
 		for request_header in request_headers {
 			// Check if the header has key-value pairs defined
 			if let Some(s_headers) = &request_header.headers {
 				// Iterate over each key-value pair in the header
 				for (key, value) in s_headers {
-					println!("{}: {}", key, value);
 					// Convert the key to a HeaderName and the value to a HeaderValue
 					let header_name = HeaderName::from_bytes(key.as_bytes()).unwrap();
 					let header_value: HeaderValue = HeaderValue::from_str(value).unwrap();
@@ -144,8 +140,8 @@ async fn proxy_request(
 }
 
 // List of web file extensions
-const WEB_EXTENSIONS: [&str; 10] = [
-	".html", ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".json",
+const WEB_EXTENSIONS: [&str; 11] = [
+	".html", ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".json", ".mp3",
 ];
 
 // Asynchronous function named 'serve_static_files'. It acts as a router for HTTP requests based on path
