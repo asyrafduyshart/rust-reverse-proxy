@@ -1,0 +1,6 @@
+/target
+config.json
+static
+/static/*
+docker-compose.yaml
+Dockerfile

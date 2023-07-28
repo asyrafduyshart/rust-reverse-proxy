@@ -22,6 +22,11 @@ use hyper::{
 	Server,
 };
 
+// Use Jemalloc only for musl-64 bits platforms
+#[cfg(all(target_env = "musl", target_pointer_width = "64"))]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 #[tokio::main]
 async fn main() {
 	// Get the CONFIG_SETTING environment variable
@@ -81,7 +86,7 @@ async fn main() {
 					.expect("PORT must be a number")
 			});
 
-			let addr = SocketAddr::from(([127, 0, 0, 1], port));
+			let addr = SocketAddr::from(([0, 0, 0, 0], port));
 			let server = Server::bind(&addr).serve(make_svc);
 
 			if let Err(e) = server.await {

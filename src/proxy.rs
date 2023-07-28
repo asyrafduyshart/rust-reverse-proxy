@@ -3,7 +3,7 @@ use hyper::{
 	http::{HeaderName, HeaderValue},
 	Body, Client, HeaderMap, Request, Response, StatusCode,
 };
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use mime_guess::from_path;
 use std::{
 	collections::HashSet,
@@ -22,11 +22,18 @@ pub async fn mirror(
 	config: Arc<Configuration>,
 ) -> Result<Response<Body>, hyper::Error> {
 	// Create a new HTTP client to send requests
-	let https = HttpsConnector::new();
+
+	let https = hyper_rustls::HttpsConnectorBuilder::new()
+		.with_native_roots()
+		.https_or_http()
+		.enable_http1()
+		.build();
+
 	let client = Client::builder().build::<_, hyper::Body>(https);
 
 	if whitelisted_ips.lock().unwrap().len() > 0 {
 		// If the IP is whitelisted, serve the request
+		println!("request from ip: {}", socket);
 		if !whitelisted_ips.lock().unwrap().contains(&socket) {
 			return Ok(Response::builder()
 				.status(StatusCode::FORBIDDEN)
@@ -184,7 +191,8 @@ async fn serve_static_files(
 					"Failed to read fallback file {}/index.html: {}",
 					folder_path, e
 				);
-				Vec::new() // Empty Vec
+				// return text no file found in string vec
+				b"File not found".to_vec()
 			});
 			let mime_type = from_path(&back_path).first_or_octet_stream();
 			let mut response = Response::new(Body::from(bytes));
