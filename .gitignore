@@ -5,5 +5,4 @@ static
 /static/*/*
 .html
 /*.html
-/static/*.html
-```
+/static/index.html
