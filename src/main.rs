@@ -1,5 +1,5 @@
 mod config;
-mod proxy;
+mod usecase;
 mod utils;
 use config::Configuration;
 use std::{
@@ -69,7 +69,7 @@ async fn main() {
 				let remote_addr = socket.remote_addr().ip();
 				async move {
 					Ok::<_, hyper::Error>(service_fn(move |req| {
-						proxy::mirror(
+						usecase::proxy::mirror(
 							req,
 							remote_addr.clone(),
 							Arc::clone(&whitelisted_ips),
