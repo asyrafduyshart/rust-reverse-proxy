@@ -1,5 +1,6 @@
 mod config;
 mod proxy;
+mod utils;
 use config::Configuration;
 use std::{
 	collections::HashSet,

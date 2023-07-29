@@ -1,3 +1,7 @@
+use crate::{
+	config::{Configuration, Proxy},
+	utils::body_clone::{JsonPrintingStream},
+};
 use hyper::{
 	client::HttpConnector,
 	http::{HeaderName, HeaderValue},
@@ -5,14 +9,13 @@ use hyper::{
 };
 use hyper_rustls::HttpsConnector;
 use mime_guess::from_path;
+
 use std::{
 	collections::HashSet,
 	net::IpAddr,
 	sync::{Arc, Mutex},
 };
 use tokio::fs::read;
-
-use crate::config::{Configuration, Proxy};
 
 // Asynchronous function named 'proxy'. It acts as a router for HTTP requests based on path
 pub async fn mirror(
@@ -135,8 +138,37 @@ async fn proxy_request(
 		}
 	}
 
-	// Send the request using the client and return the response
-	client.request(request).await
+	// Send the request to the destination server
+	// client.request(request).await
+
+	// using print stream
+	let res = client.request(request).await?;
+
+	let (parts, body) = res.into_parts();
+
+	let print_stream = JsonPrintingStream {
+		inner: body,
+		buffer: Vec::new(),
+	};
+
+	let body = Body::wrap_stream(print_stream);
+
+	Ok(Response::from_parts(parts, body))
+
+	// let res = client.request(request).await?;
+
+	// let (parts, body) = res.into_parts();
+
+	// let json_stream = JsonPrintingStream {
+	// 	inner: body,
+	// 	de: serde_json::StreamDeserializer::new(serde_json::de::IoRead::new(std::io::Cursor::new(
+	// 		Bytes::new(),
+	// 	))),
+	// };
+
+	// let body = Body::wrap_stream(json_stream);
+
+	// Ok(Response::from_parts(parts, body))
 }
 
 // List of web file extensions
