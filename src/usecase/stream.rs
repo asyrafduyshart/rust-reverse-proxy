@@ -29,7 +29,7 @@ impl<S: Stream<Item = Result<Bytes, hyper::Error>> + Unpin> Stream for JsonPrint
 					);
 
 				while let Some(Ok(json)) = de.next() {
-					println!("Received JSON: {}", json);
+					// println!("Received JSON: {}", json);
 					// stop after first json
 				}
 				return Poll::Ready(Some(Ok(chunk)));
