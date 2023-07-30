@@ -1,6 +1,7 @@
 use async_compression::tokio::write::{DeflateEncoder, GzipEncoder};
 use brotli2::write::BrotliEncoder;
 use hyper::{body::Bytes, header, http::HeaderValue, Body, Response, StatusCode};
+use std::io::Write;
 
 use mime_guess::from_path;
 use tokio::{fs::read, io::AsyncWriteExt, task};
@@ -47,7 +48,6 @@ pub async fn compressed_static_files(
 						let bytes_vec = bytes.to_vec();
 						let compressed_bytes_vec = task::spawn_blocking(move || {
 							let mut encoder = BrotliEncoder::new(Vec::new(), 6);
-							use std::io::Write;
 							encoder.write_all(&bytes_vec).unwrap();
 							encoder.finish().unwrap()
 						})

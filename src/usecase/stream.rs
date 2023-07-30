@@ -28,7 +28,7 @@ impl<S: Stream<Item = Result<Bytes, hyper::Error>> + Unpin> Stream for JsonPrint
 						serde_json::de::IoRead::new(Cursor::new(self.buffer.clone())),
 					);
 
-				while let Some(Ok(json)) = de.next() {
+				while let Some(Ok(_json)) = de.next() {
 					// println!("Received JSON: {}", json);
 					// stop after first json
 				}
