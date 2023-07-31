@@ -34,11 +34,12 @@ pub async fn mirror(
 
 	if whitelisted_ips.lock().unwrap().len() > 0 {
 		// If the IP is whitelisted, serve the request
-		println!("request from ip: {}", socket);
-		if !whitelisted_ips.lock().unwrap().contains(&socket) {
+		let forwarded_ips = get_ips_from_x_forwarded_for(&req);
+		if !is_ip_in_whitelist(forwarded_ips, &whitelisted_ips.lock().unwrap()) {
+			// return 403 shows what ip come from like "Forbidded from ip :123.23124.512"
 			return Ok(Response::builder()
 				.status(StatusCode::FORBIDDEN)
-				.body(Body::from("Forbidden"))
+				.body("Forbidden".into())
 				.unwrap());
 		}
 	}
@@ -167,4 +168,27 @@ pub async fn handle(_req: Request<Body>) -> Result<Response<Body>, hyper::Error>
 		.unwrap();
 
 	Ok(response)
+}
+
+fn get_ips_from_x_forwarded_for(req: &Request<hyper::Body>) -> Vec<IpAddr> {
+	let mut ips = Vec::new();
+	if let Some(header_value) = req.headers().get("X-Forwarded-For") {
+		if let Ok(forwarded_for) = header_value.to_str() {
+			for ip_str in forwarded_for.split(',').map(str::trim) {
+				if let Ok(ip) = ip_str.parse::<IpAddr>() {
+					ips.push(ip);
+				}
+			}
+		}
+	}
+	ips
+}
+
+fn is_ip_in_whitelist(ips: Vec<IpAddr>, whitelist: &HashSet<IpAddr>) -> bool {
+	for ip in ips {
+		if whitelist.contains(&ip) {
+			return true;
+		}
+	}
+	false
 }
