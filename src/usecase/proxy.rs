@@ -18,7 +18,6 @@ use super::{static_file::compressed_static_files, stream::JsonPrintingStream};
 
 pub async fn mirror(
 	req: Request<Body>,
-	socket: IpAddr,
 	whitelisted_ips: Arc<Mutex<HashSet<IpAddr>>>,
 	config: Arc<Configuration>,
 ) -> Result<Response<Body>, hyper::Error> {

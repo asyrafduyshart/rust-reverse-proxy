@@ -63,15 +63,13 @@ async fn main() {
 		let whitelisted_ips = Arc::clone(&whitelisted_ips);
 
 		let server_task = task::spawn(async move {
-			let make_svc = make_service_fn(move |socket: &AddrStream| {
+			let make_svc = make_service_fn(move |_| {
 				let config = Arc::new(config.clone());
 				let whitelisted_ips = Arc::clone(&whitelisted_ips);
-				let remote_addr = socket.remote_addr().ip();
 				async move {
 					Ok::<_, hyper::Error>(service_fn(move |req| {
 						usecase::proxy::mirror(
 							req,
-							remote_addr.clone(),
 							Arc::clone(&whitelisted_ips),
 							Arc::clone(&config),
 						)
