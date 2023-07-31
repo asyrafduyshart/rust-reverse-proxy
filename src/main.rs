@@ -18,7 +18,6 @@ use tokio::{
 };
 
 use hyper::{
-	server::conn::AddrStream,
 	service::{make_service_fn, service_fn},
 	Server,
 };
