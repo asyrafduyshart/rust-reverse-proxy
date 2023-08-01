@@ -57,7 +57,6 @@ async fn main() {
 		let config_port = server.listen.clone();
 		let config = Arc::new(config.clone());
 		let whitelisted_ips = Arc::clone(&whitelisted_ips);
-
 		let server_task = task::spawn(async move {
 			let make_svc = make_service_fn(move |_| {
 				let config = Arc::new(config.clone());
