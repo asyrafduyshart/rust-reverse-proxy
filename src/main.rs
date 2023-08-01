@@ -2,6 +2,7 @@ mod config;
 mod usecase;
 mod utils;
 use config::Configuration;
+mod schedule_task;
 use std::{
 	collections::HashSet,
 	env,
@@ -10,12 +11,8 @@ use std::{
 	net::{IpAddr, SocketAddr},
 	path::Path,
 	sync::{Arc, Mutex},
-	time::Duration,
 };
-use tokio::{
-	task::{self},
-	time::interval,
-};
+use tokio::task::{self};
 
 use hyper::{
 	service::{make_service_fn, service_fn},
@@ -96,61 +93,15 @@ async fn main() {
 
 	// if whitelist url is not empty
 	if !config.ip_whitelist_url.is_empty() {
-		let parsed_timeout = config.ip_check_interval.parse::<u64>();
-		let timeout = match parsed_timeout {
-			Ok(val) => val,
-			Err(_) => {
-				eprintln!("Failed to parse ip_check_interval, using default value of 30");
-				30
-			}
-		};
-		let whitelist_updater_task = task::spawn(async move {
-			// Create an interval timer that ticks every 30 seconds
-			let mut interval = interval(Duration::from_secs(timeout));
+		let whitelist_updater_task = schedule_task::create_whitelist_updater_task(
+			client.clone(),
+			Arc::new(config.clone()),
+			Arc::clone(&whitelisted_ips),
+		)
+		.await;
 
-			loop {
-				// Wait for the next tick
-				interval.tick().await;
-
-				// Send the GET request
-				let res = client.get(config.ip_whitelist_url.clone()).send().await;
-
-				match res {
-					Ok(response) => {
-						// If the request was successful, parse the response body as a list of IPs
-						let body = match response.text().await {
-							Ok(body) => body,
-							Err(e) => {
-								eprintln!("Failed to parse response body: {}", e);
-								continue;
-							}
-						};
-
-						// Split the body by newline and parse each piece into an IP address
-						let ips: Vec<IpAddr> = body
-							.lines()
-							.map(|line| line.parse::<IpAddr>())
-							.filter_map(Result::ok)
-							.collect();
-
-						println!("updated whitelist: {:?}", ips.len());
-
-						// Lock the whitelist and update it
-						let mut whitelist = whitelisted_ips.lock().unwrap();
-						whitelist.clear();
-						for ip in ips {
-							whitelist.insert(ip);
-						}
-					}
-					Err(e) => {
-						eprintln!("Failed to send GET request: {}", e);
-					}
-				}
-			}
-		});
 		server_tasks.push(whitelist_updater_task);
 	}
-
 	let servers = futures::future::join_all(server_tasks).await;
 
 	for server in servers {
