@@ -6,3 +6,6 @@ static
 .html
 /*.html
 /static/index.html
+/target
+.env
+docker-compose.yml
