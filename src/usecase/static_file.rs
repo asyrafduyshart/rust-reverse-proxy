@@ -12,10 +12,11 @@ const WEB_EXTENSIONS: [&str; 11] = [
 ];
 
 // List of compressible Mime types
-const COMPRESSIBLE_TYPES: [&str; 5] = [
+const COMPRESSIBLE_TYPES: [&str; 6] = [
 	"text/html",
 	"text/css",
 	"text/javascript",
+	"application/javascript",
 	"application/json",
 	"application/xml",
 ];

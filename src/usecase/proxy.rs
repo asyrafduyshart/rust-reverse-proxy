@@ -14,7 +14,7 @@ use std::{
 	sync::{Arc, Mutex},
 };
 
-use super::{static_file::compressed_static_files, stream::JsonPrintingStream};
+use super::static_file::compressed_static_files;
 
 pub async fn mirror(
 	req: Request<Body>,
@@ -143,17 +143,19 @@ async fn proxy_request(
 
 	// using print stream
 	let res = client.request(request).await?;
+	Ok(res)
+	// let res = client.request(request).await?;
 
-	let (parts, body) = res.into_parts();
+	// let (parts, body) = res.into_parts();
 
-	let print_stream = JsonPrintingStream {
-		inner: body,
-		buffer: Vec::new(),
-	};
+	// let print_stream = JsonPrintingStream {
+	// 	inner: body,
+	// 	buffer: Vec::new(),
+	// };
 
-	let body = Body::wrap_stream(print_stream);
+	// let body = Body::wrap_stream(print_stream);
 
-	Ok(Response::from_parts(parts, body))
+	// Ok(Response::from_parts(parts, body))
 }
 
 // handler req that returns "not mapped" response
