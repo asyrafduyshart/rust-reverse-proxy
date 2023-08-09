@@ -1,6 +1,6 @@
 use crate::{
 	config::{Configuration, Proxy},
-	utils::compression,
+	utils::{compression, control_headers, security_headers},
 };
 
 use hyper::{
@@ -85,6 +85,7 @@ async fn proxy_request(
 
 	// add uri with query params
 	let path = req.uri().path();
+	let sec_path = path.to_string();
 	// add final path for replacement
 
 	let final_path = path.replace(&proxy.proxy_path, "");
@@ -161,12 +162,39 @@ async fn proxy_request(
 	}
 
 	// if let Some(encoding) = get_prefered_encoding(&res.headers()) {
-	let res = compression::auto(&method, header, res).unwrap_or_else(|_| {
+	let mut res = compression::auto(&method, header, res).unwrap_or_else(|_| {
 		Response::builder()
 			.status(StatusCode::INTERNAL_SERVER_ERROR)
 			.body("Internal Server Error".into())
 			.unwrap()
 	});
+
+	// if cache-control is not set, set it
+	if res.headers().get("cache-control").is_none() {
+		control_headers::append_headers(&sec_path, &mut res);
+	}
+	security_headers::append_headers(&mut res);
+
+	// cache control is no-cache, no-store, must-revalidate, max-age=0 do not append headers
+
+	match res.headers().get("cache-control") {
+		Some(cache_control) => {
+			if let Ok(cache_control) = cache_control.to_str() {
+				if cache_control.contains("no-cache")
+					|| cache_control.contains("no-store")
+					|| cache_control.contains("must-revalidate")
+					|| cache_control.contains("max-age=0")
+				{
+					return Ok(res);
+				}
+			}
+		}
+		None => {
+			control_headers::append_headers(&sec_path, &mut res);
+		}
+	}
+
+	// if cache-control is set, append headers
 
 	Ok(res)
 }
