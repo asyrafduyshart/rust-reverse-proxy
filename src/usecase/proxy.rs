@@ -18,6 +18,8 @@ use std::{
 
 use super::static_file::compressed_static_files;
 
+const IGNORE_CACHE: [&str; 3] = ["gzip", "deflate", "br"];
+
 pub async fn mirror(
 	req: Request<Body>,
 	whitelisted_ips: Arc<Mutex<HashSet<IpAddr>>>,
@@ -144,32 +146,29 @@ async fn proxy_request(
 		}
 	}
 
-	// Send the request to the destination server
-	// client.request(request).await
-
-	// using print stream
 	let res = client.request(request).await?;
 
-	// let res = compression::auto(&method, header, res).unwrap_or_else(|_| {
-	// 	Response::builder()
-	// 		.status(StatusCode::INTERNAL_SERVER_ERROR)
-	// 		.body("Internal Server Error".into())
-	// 		.unwrap()
-	// });
+	// check if response IGNORED_CACHED had in Content-Encoding
+	// if yes, return res
+	// if no, return compression::auto(&method, header, res)
+	let encoding = res.headers().get("content-encoding");
+	if let Some(encoding) = encoding {
+		if let Ok(encoding) = encoding.to_str() {
+			if IGNORE_CACHE.contains(&encoding) {
+				return Ok(res);
+			}
+		}
+	}
+
+	// if let Some(encoding) = get_prefered_encoding(&res.headers()) {
+	let res = compression::auto(&method, header, res).unwrap_or_else(|_| {
+		Response::builder()
+			.status(StatusCode::INTERNAL_SERVER_ERROR)
+			.body("Internal Server Error".into())
+			.unwrap()
+	});
 
 	Ok(res)
-	// let res = client.request(request).await?;
-
-	// let (parts, body) = res.into_parts();
-
-	// let print_stream = JsonPrintingStream {
-	// 	inner: body,
-	// 	buffer: Vec::new(),
-	// };
-
-	// let body = Body::wrap_stream(print_stream);
-
-	// Ok(Response::from_parts(parts, body))
 }
 
 // handler req that returns "not mapped" response
