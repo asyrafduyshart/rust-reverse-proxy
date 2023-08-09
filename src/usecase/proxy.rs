@@ -1,9 +1,12 @@
-use crate::config::{Configuration, Proxy};
+use crate::{
+	config::{Configuration, Proxy},
+	utils::compression,
+};
 
 use hyper::{
 	client::HttpConnector,
 	http::{HeaderName, HeaderValue},
-	Body, Client, HeaderMap, Request, Response, StatusCode,
+	Body, Client, HeaderMap, Method, Request, Response, StatusCode,
 };
 use hyper_rustls::HttpsConnector;
 
@@ -44,6 +47,8 @@ pub async fn mirror(
 
 	// Extract the path component from the incoming HTTP request's URI
 	let path = req.uri().path();
+	let method = req.method().clone();
+	let headers = req.headers().clone();
 
 	// Iterate over all HTTP servers defined in the configuration
 	for server in &config.http.servers {
@@ -51,13 +56,11 @@ pub async fn mirror(
 		for proxy in &server.proxies {
 			// Check if the request URI's path starts with the current proxy's path
 			if path.starts_with(&proxy.proxy_path) {
-				return proxy_request(req, client, proxy).await;
+				return proxy_request(req, client, proxy, &headers, &method).await;
 			}
 		}
 
-		let method = req.method();
-		let headers = req.headers();
-		let compressed = compressed_static_files(path, &server.root, method, headers).await;
+		let compressed = compressed_static_files(path, &server.root, &method, &headers).await;
 		return compressed;
 	}
 	let result = handle(req).await;
@@ -70,6 +73,8 @@ async fn proxy_request(
 	req: Request<Body>,
 	client: Client<HttpsConnector<HttpConnector>>,
 	proxy: &Proxy,
+	header: &HeaderMap<HeaderValue>,
+	method: &Method,
 ) -> Result<Response<Body>, hyper::Error> {
 	// Log the proxy
 	let full_url = &proxy.proxy_pass.clone();
@@ -144,6 +149,14 @@ async fn proxy_request(
 
 	// using print stream
 	let res = client.request(request).await?;
+
+	// let res = compression::auto(&method, header, res).unwrap_or_else(|_| {
+	// 	Response::builder()
+	// 		.status(StatusCode::INTERNAL_SERVER_ERROR)
+	// 		.body("Internal Server Error".into())
+	// 		.unwrap()
+	// });
+
 	Ok(res)
 	// let res = client.request(request).await?;
 
