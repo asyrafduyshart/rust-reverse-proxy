@@ -2,7 +2,7 @@ use hyper::{header, http::HeaderValue, Body, HeaderMap, Method, Response, Status
 use mime_guess::from_path;
 use tokio::fs::read;
 
-use crate::utils::compression;
+use crate::utils::{compression, control_headers};
 
 // List of web file extensions
 const WEB_EXTENSIONS: [&str; 11] = [
@@ -42,6 +42,8 @@ pub async fn compressed_static_files(
 				header::CONTENT_TYPE,
 				header::HeaderValue::from_str(mime_str).unwrap(),
 			);
+
+			control_headers::append_headers(path, &mut response);
 
 			Ok(response)
 		}

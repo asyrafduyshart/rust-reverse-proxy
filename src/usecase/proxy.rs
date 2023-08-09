@@ -54,15 +54,15 @@ pub async fn mirror(
 				return proxy_request(req, client, proxy).await;
 			}
 		}
+
 		let method = req.method();
 		let headers = req.headers();
-		// println!("compression: {:?}", compression.clone());
-		// serve the static files
-		// return compressed_static_files(path, &server.root, compression.clone()).await;
-		return compressed_static_files(path, &server.root, method, headers).await;
-		// return serve_static_files(path, &server.root).await;
+		let compressed = compressed_static_files(path, &server.root, method, headers).await;
+		return compressed;
 	}
-	handle(req).await
+	let result = handle(req).await;
+
+	return result;
 }
 
 // Asynchronous function named 'handle'. It acts as a router for HTTP requests based on path
