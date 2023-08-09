@@ -2,7 +2,6 @@ use crate::config::{Configuration, Proxy};
 
 use hyper::{
 	client::HttpConnector,
-	header,
 	http::{HeaderName, HeaderValue},
 	Body, Client, HeaderMap, Request, Response, StatusCode,
 };
@@ -55,10 +54,12 @@ pub async fn mirror(
 				return proxy_request(req, client, proxy).await;
 			}
 		}
-		let compression = req.headers().get(header::ACCEPT_ENCODING);
+		let method = req.method();
+		let headers = req.headers();
 		// println!("compression: {:?}", compression.clone());
 		// serve the static files
-		return compressed_static_files(path, &server.root, compression.clone()).await;
+		// return compressed_static_files(path, &server.root, compression.clone()).await;
+		return compressed_static_files(path, &server.root, method, headers).await;
 		// return serve_static_files(path, &server.root).await;
 	}
 	handle(req).await
