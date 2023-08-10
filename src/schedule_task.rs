@@ -16,7 +16,7 @@ pub async fn create_whitelist_updater_task(
 	let timeout = match parsed_timeout {
 		Ok(val) => val,
 		Err(_) => {
-			eprintln!("Failed to parse ip_check_interval, using default value of 30");
+			log::error!("Failed to parse ip_check_interval, using default value (30)");
 			30
 		}
 	};
@@ -34,7 +34,7 @@ pub async fn create_whitelist_updater_task(
 					let body = match response.text().await {
 						Ok(body) => body,
 						Err(e) => {
-							eprintln!("Failed to parse response body: {}", e);
+							log::error!("Failed to parse response body: {}", e);
 							continue;
 						}
 					};
@@ -45,7 +45,7 @@ pub async fn create_whitelist_updater_task(
 						.filter_map(Result::ok)
 						.collect();
 
-					println!("updated whitelist: {:?}", ips.len());
+					log::info!("updated whitelist: {:?}", ips.len());
 
 					let mut whitelist = whitelisted_ips.lock().unwrap();
 					whitelist.clear();
@@ -54,7 +54,7 @@ pub async fn create_whitelist_updater_task(
 					}
 				}
 				Err(e) => {
-					eprintln!("Failed to send GET request: {}", e);
+					log::error!("Failed to send GET request: {}", e);
 				}
 			}
 		}

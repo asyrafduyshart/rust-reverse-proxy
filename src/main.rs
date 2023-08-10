@@ -2,6 +2,10 @@ mod config;
 mod usecase;
 mod utils;
 use config::Configuration;
+
+use dotenv::dotenv;
+use env_logger::Env;
+
 mod schedule_task;
 use std::{
 	collections::HashSet,
@@ -26,6 +30,11 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[tokio::main]
 async fn main() {
+	dotenv().ok();
+	// init logger with checking inside env_var wether timestamp is true or false
+	env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+		.format_timestamp(None)
+		.init();
 	// Get the CONFIG_SETTING environment variable
 	let config_setting = env::var("CONFIG_SETTING");
 
@@ -84,7 +93,7 @@ async fn main() {
 			let server = Server::bind(&addr).serve(make_svc);
 
 			if let Err(e) = server.await {
-				println!("error: {}", e);
+				log::error!("server error: {}", e);
 			}
 		});
 		server_tasks.push(server_task);
@@ -105,8 +114,12 @@ async fn main() {
 
 	for server in servers {
 		match server {
-			Ok(_) => println!("Server finished successfully"),
-			Err(e) => eprintln!("Server failed with error: {}", e),
+			Ok(_) => {
+				log::info!("Server finished successfully");
+			}
+			Err(e) => {
+				log::error!("Server finished with error: {}", e);
+			}
 		}
 	}
 	// clone port value from config

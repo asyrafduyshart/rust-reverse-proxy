@@ -23,13 +23,12 @@ impl<S: Stream<Item = Result<Bytes, hyper::Error>> + Unpin> Stream for PrintingS
 				Poll::Ready(Some(Ok(chunk)))
 			}
 			Some(Err(e)) => {
-				println!("error: {:?}", e);
+				log::error!("Error while reading stream: {}", e);
 				Poll::Ready(Some(Err(e)))
 			}
 			None => {
-				println!("stream is done");
 				let s = String::from_utf8_lossy(&self.buffer);
-				println!("buffer: {}", s);
+				log::info!("buffer: {:?}", s);
 				Poll::Ready(None)
 			}
 		}
