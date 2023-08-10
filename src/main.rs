@@ -43,10 +43,12 @@ async fn main() {
 	match config_setting {
 		Ok(val) => {
 			// If CONFIG_SETTING is set, parse it
+			log::info!("Using config from environment variable");
 			config = serde_json::from_str(&val).expect("JSON was not well-formatted");
 		}
 		Err(_) => {
 			// If CONFIG_SETTING is not set, parse the file
+			log::info!("Using config from config.json");
 			let json_file_path = Path::new("config.json");
 			let mut json_file = File::open(&json_file_path).expect("File open failed");
 			let mut json_content = String::new();
