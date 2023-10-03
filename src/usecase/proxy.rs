@@ -35,6 +35,11 @@ pub async fn mirror(
 
 	let client = Client::builder().build::<_, hyper::Body>(https);
 
+	let default_ips = get_ips_from_string(&config.default_ip_whitelist);
+	if default_ips.len() > 0 {
+		whitelisted_ips.lock().unwrap().extend(default_ips);
+	}
+
 	if whitelisted_ips.lock().unwrap().len() > 0 {
 		// If the IP is whitelisted, serve the request
 		let forwarded_ips = get_ips_from_x_forwarded_for(&req);
@@ -221,6 +226,16 @@ fn get_ips_from_x_forwarded_for(req: &Request<hyper::Body>) -> Vec<IpAddr> {
 					ips.push(ip);
 				}
 			}
+		}
+	}
+	ips
+}
+
+fn get_ips_from_string(ip_str: &str) -> Vec<IpAddr> {
+	let mut ips = Vec::new();
+	for ip_str in ip_str.split(',').map(str::trim) {
+		if let Ok(ip) = ip_str.parse::<IpAddr>() {
+			ips.push(ip);
 		}
 	}
 	ips
