@@ -120,6 +120,7 @@ async fn proxy_request(
 
 	// Get a mutable reference to the request's headers
 	let headers: &mut HeaderMap<HeaderValue> = request.headers_mut();
+	let mut ignore_cache = true;
 
 	// Copy all the headers from the original request
 	for (name, value) in original_headers {
@@ -129,6 +130,11 @@ async fn proxy_request(
 			if header_name == "host" {
 				continue;
 			}
+
+			if header_name == "cache-control" {
+				ignore_cache = false;
+			}
+
 			headers.insert(header_name, value);
 		}
 	}
@@ -156,7 +162,6 @@ async fn proxy_request(
 
 	// check if response IGNORED_CACHED had in Content-Encoding
 	// if yes, return res
-	// if no, return compression::auto(&method, header, res)
 	let encoding = res.headers().get("content-encoding");
 	if let Some(encoding) = encoding {
 		if let Ok(encoding) = encoding.to_str() {
@@ -174,10 +179,6 @@ async fn proxy_request(
 			.unwrap()
 	});
 
-	// if cache-control is not set, set it
-	if res.headers().get("cache-control").is_none() {
-		control_headers::append_headers(&sec_path, &mut res);
-	}
 	security_headers::append_headers(&mut res);
 
 	// cache control is no-cache, no-store, must-revalidate, max-age=0 do not append headers
@@ -195,11 +196,11 @@ async fn proxy_request(
 			}
 		}
 		None => {
-			control_headers::append_headers(&sec_path, &mut res);
+			if !ignore_cache {
+				control_headers::append_headers(&sec_path, &mut res);
+			}
 		}
 	}
-
-	// if cache-control is set, append headers
 
 	Ok(res)
 }
