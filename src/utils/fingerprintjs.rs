@@ -112,3 +112,24 @@ pub fn parse_cookie(cookie_value: &str) -> Result<CookieData, Box<dyn std::error
 	let data: CookieData = from_slice(&decoded_bytes)?;
 	Ok(data)
 }
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_parse_cookie() {
+		// Test case 1: Valid cookie value
+		let cookie_value =
+			"eyJ2aXNpdG9ySWQiOiAiMTIzNDU2Nzg5MCIsICJyZXF1ZXN0SWQiOiAiMTIzNDU2Nzg5MCJ9";
+		let result = parse_cookie(cookie_value);
+		assert!(result.is_ok());
+		let data = result.unwrap();
+		assert_eq!(data.visitor_id, "1234567890");
+		assert_eq!(data.request_id, "1234567890");
+
+		// Test case 2: Invalid cookie value
+		let cookie_value = "invalid_cookie_value";
+		let result = parse_cookie(cookie_value);
+		assert!(result.is_err());
+	}
+}
