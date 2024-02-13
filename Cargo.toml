@@ -29,6 +29,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 dotenv = "0.15.0"
 log = "0.4.19"
 env_logger = "0.10.0"
+lol_html = "1.2.0"
+base64 = "0.21.7"
 
 
 [dev-dependencies]

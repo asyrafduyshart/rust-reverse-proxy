@@ -1,6 +1,6 @@
 use crate::{
 	config::{Configuration, Proxy},
-	utils::{compression, control_headers, security_headers},
+	utils::{compression, control_headers, cookie, fingerprintjs, security_headers},
 };
 
 use hyper::{
@@ -55,10 +55,36 @@ pub async fn mirror(
 	// Extract the path component from the incoming HTTP request's URI
 	let path = req.uri().path();
 	let method = req.method().clone();
-	let headers = req.headers().clone();
+	let mut headers = req.headers().clone();
 
-	// Iterate over all HTTP servers defined in the configuration
 	for server in &config.http.servers {
+		// check if the fp cookie exist;
+		let fp_cookie: Option<String> = match server.fingerprintjs {
+			Some(_) => cookie::extract_specific_cookie_from_headermap(&headers, "_fp_id"),
+			None => None,
+		};
+		// check the value of fp_cookie
+		match &fp_cookie {
+			Some(fp_cookie) => {
+				let cook = fingerprintjs::parse_cookie(&fp_cookie);
+				match cook {
+					Ok(cook) => {
+						// add addtional header to proxy
+						headers.insert(
+							"X-FP-Visitor",
+							HeaderValue::from_str(&cook.visitor_id).unwrap(),
+						);
+						headers.insert(
+							"X-FP-Request",
+							HeaderValue::from_str(&cook.request_id).unwrap(),
+						);
+					}
+					Err(_) => {}
+				}
+			}
+			None => {}
+		}
+
 		// Iterate over all proxies defined for the current server
 		for proxy in &server.proxies {
 			// Check if the request URI's path starts with the current proxy's path
@@ -67,7 +93,36 @@ pub async fn mirror(
 			}
 		}
 
-		let compressed = compressed_static_files(path, &server.root, &method, &headers).await;
+		let mut scripts = Vec::new();
+		let mut onloadfunction = None;
+
+		if server.fingerprintjs.is_some() && fp_cookie.is_none() {
+			// if the path is not a proxy, serve the static files
+			let fingerprint_id = server.fingerprintjs.as_ref().unwrap();
+			if path.starts_with("/js/fp.js") {
+				// create new proxy for fingerprintjs
+				let proxy = Proxy {
+					proxy_pass: format!("https://fpjscdn.net/v3/{}", fingerprint_id),
+					proxy_path: "/js/fp.js".to_string(),
+					retain_path: true,
+					request_headers: None,
+				};
+				return proxy_request(req, client, &proxy, &headers, &method).await;
+			}
+
+			scripts.push(fingerprintjs::FP_SCRIPT);
+			onloadfunction = Some("initFpCookie();".to_string());
+		}
+
+		let compressed: Result<Response<Body>, hyper::Error> = compressed_static_files(
+			path,
+			&server.root,
+			&method,
+			&headers,
+			scripts,
+			onloadfunction.as_ref(),
+		)
+		.await;
 		return compressed;
 	}
 	let result = handle(req).await;
