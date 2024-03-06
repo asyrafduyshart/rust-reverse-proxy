@@ -37,7 +37,6 @@ pub static FP_SCRIPT: &str = r#"
         .catch(e => {
             if (e.message === "Network connection error") {
                 function createPersistentModal() {
-                    // Create the overlay div
                     var overlay = document.createElement('div');
                     overlay.style.position = 'fixed';
                     overlay.style.top = '0';
@@ -49,23 +48,35 @@ pub static FP_SCRIPT: &str = r#"
                     overlay.style.display = 'flex';
                     overlay.style.justifyContent = 'center';
                     overlay.style.alignItems = 'center';
-        
-                    // Create the modal content div
+
                     var modalContent = document.createElement('div');
                     modalContent.style.backgroundColor = '#fff';
                     modalContent.style.padding = '20px';
                     modalContent.style.borderRadius = '5px';
                     modalContent.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                    modalContent.innerText = "Please Disable Ad Blocker To Continue";
-        
-                    // Append the modal content to the overlay
+                    modalContent.innerText = "Please Disable Ad Blocker To Continue\n";
+
+                    var closeButton = document.createElement('button');
+                    closeButton.innerText = 'Close';
+                    closeButton.style.marginTop = '10px';
+                    closeButton.style.padding = '8px 16px';
+                    closeButton.style.border = 'none';
+                    closeButton.style.borderRadius = '4px';
+                    closeButton.style.backgroundColor = '#f44336';
+                    closeButton.style.color = '#fff';
+                    closeButton.style.fontWeight = 'bold';
+                    closeButton.style.cursor = 'pointer';
+                    closeButton.addEventListener('click', function() {
+                        overlay.remove();
+                        setTimeout(createPersistentModal, 1000 * 60 * 5); // Show modal again after 5 minutes
+                    });
+
+                    modalContent.appendChild(closeButton);
                     overlay.appendChild(modalContent);
-        
-                    // Append the overlay to the body
+
                     document.body.appendChild(overlay);
                 }
-        
-                // Call the function to create and show the modal
+
                 createPersistentModal();
             }
         });
@@ -87,7 +98,7 @@ pub static FP_SCRIPT: &str = r#"
                 cookie += "; max-age=" + (daysToLive*24*60*60);
                 
                 // Secure attribute for HTTPS only
-                cookie += "; secure";
+                // cookie += "; secure";
 
                 // SameSite attribute for CSRF protection
                 cookie += "; samesite=strict";
