@@ -71,7 +71,13 @@ pub static FP_SCRIPT: &str = r#"
                         setTimeout(createPersistentModal, 1000 * 60 * 5); // Show modal again after 5 minutes
                     });
 
-                    modalContent.appendChild(closeButton);
+                    var buttonDiv = document.createElement('div');
+                    buttonDiv.style.display = 'flex';
+                    buttonDiv.style.alignItems = 'center';
+                    buttonDiv.style.justifyContent = 'center';
+                    buttonDiv.appendChild(closeButton);
+
+                    modalContent.appendChild(buttonDiv);
                     overlay.appendChild(modalContent);
 
                     document.body.appendChild(overlay);
